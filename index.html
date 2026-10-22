@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Industrial Equipment Monitoring & Predictive Maintenance</title>
+    <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen">
+    <div class="container mx-auto p-6">
+        <!-- Header -->
+        <header class="mb-8 border-b border-gray-800 pb-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-blue-500 tracking-wide">⚙️ VULCAN IOT</h1>
+                <p class="text-gray-400 text-sm">Industrial Predictive Maintenance Platform</p>
+            </div>
+            <div id="sys-status" class="bg-green-900 text-green-300 px-4 py-2 rounded-md font-mono text-xs border border-green-700 animate-pulse">
+                SYSTEM STATUS: ACTIVE (LIVE DATA)
+            </div>
+        </header>
+
+        <!-- Analytics Overview Widgets -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gray-800 p-5 rounded-lg border border-gray-700 shadow-lg">
+                <h3 class="text-gray-400 text-sm uppercase font-semibold">Operational Status</h3>
+                <p id="stat-active" class="text-3xl font-bold text-green-400 mt-2">0 / 0 <span class="text-xs text-gray-400 font-normal">Online</span></p>
+            </div>
+            <div class="bg-gray-800 p-5 rounded-lg border border-gray-700 shadow-lg">
+                <h3 class="text-gray-400 text-sm uppercase font-semibold">Total Accum. Downtime</h3>
+                <p id="stat-downtime" class="text-3xl font-bold text-red-400 mt-2">0 hrs</p>
+            </div>
+            <div class="bg-gray-800 p-5 rounded-lg border border-gray-700 shadow-lg">
+                <h3 class="text-gray-400 text-sm uppercase font-semibold">Critical Asset Risk</h3>
+                <p id="stat-risk" class="text-xl font-bold text-amber-400 mt-3 truncate">Evaluating...</p>
+            </div>
+            <div class="bg-gray-800 p-5 rounded-lg border border-gray-700 shadow-lg">
+                <h3 class="text-gray-400 text-sm uppercase font-semibold">System Filters</h3>
+                <div class="flex gap-2 mt-2">
+                    <select id="filter-unit" class="bg-gray-700 text-xs text-white rounded p-2 flex-1 border border-gray-600 focus:outline-none focus:border-blue-500">
+                        <option value="ALL">All Units</option>
+                        <option value="Assembly-A">Assembly-A</option>
+                        <option value="Milling-B">Milling-B</option>
+                        <option value="Packaging-C">Packaging-C</option>
+                    </select>
+                    <select id="filter-status" class="bg-gray-700 text-xs text-white rounded p-2 flex-1 border border-gray-600 focus:outline-none focus:border-blue-500">
+                        <option value="ALL">All Status</option>
+                        <option value="Operational">Operational</option>
+                        <option value="Maintenance Required">Maintenance</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Workspace -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Machine Telemetry Grid -->
+            <div class="lg:col-span-2 space-y-6">
+                <h2 class="text-xl font-semibold text-gray-300 flex items-center gap-2">📊 Live Machine Telemetry</h2>
+                <div id="machine-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Dynamic Component Cards -->
+                </div>
+            </div>
+
+            <!-- Action Optimization Table -->
+            <div class="space-y-6">
+                <h2 class="text-xl font-semibold text-gray-300 flex items-center gap-2">⚠️ Maintenance Priority Router</h2>
+                <div class="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden shadow-lg">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-700 text-gray-300 font-mono text-xs uppercase">
+                            <tr>
+                                <th class="p-3">Asset ID</th>
+                                <th class="p-3">Risk Severity</th>
+                                <th class="p-3">Prescriptive Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="priority-table-body" class="divide-y divide-gray-700 font-sans">
+                            <!-- Injected rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CRITICAL_TEMP = 80; 
+        const CRITICAL_VIB = 4.5; 
+
+        let machines = [
+            { id: "MAC-001", unit: "Assembly-A", hours: 4250, temp: 72, vibration: 3.1, status: "Operational", nextMaintenance: "2026-11-15", recentDowntime: 4 },
+            { id: "MAC-002", unit: "Milling-B", hours: 8120, temp: 83, vibration: 2.8, status: "Operational", nextMaintenance: "2026-11-02", recentDowntime: 12 },
+            { id: "MAC-003", unit: "Assembly-A", hours: 1430, temp: 65, vibration: 5.2, status: "Operational", nextMaintenance: "2026-12-01", recentDowntime: 0 },
+            { id: "MAC-004", unit: "Packaging-C", hours: 5900, temp: 78, vibration: 3.9, status: "Operational", nextMaintenance: "2026-10-28", recentDowntime: 8 },
+            { id: "MAC-005", unit: "Milling-B", hours: 9340, temp: 88, vibration: 6.1, status: "Operational", nextMaintenance: "2026-10-24", recentDowntime: 24 }
+        ];
+
+        function runSimulationEngine() {
+            machines.forEach(m => {
+                m.temp += parseFloat((Math.random() * 4 - 2).toFixed(1));
+                m.vibration += parseFloat((Math.random() * 0.6 - 0.3).toFixed(2));
+                if(m.vibration < 0.5) m.vibration = 1.2;
+
+                if (m.temp > CRITICAL_TEMP || m.vibration > CRITICAL_VIB) {
+                    m.status = "Maintenance Required";
+                } else {
+                    m.status = "Operational";
+                }
+            });
+            renderDashboard();
+        }
+
+        function renderDashboard() {
+            const grid = document.getElementById("machine-grid");
+            const tableBody = document.getElementById("priority-table-body");
+            const unitFilter = document.getElementById("filter-unit").value;
+            const statusFilter = document.getElementById("filter-status").value;
+
+            grid.innerHTML = "";
+            tableBody.innerHTML = "";
+
+            let totalOperational = 0;
+            let totalDowntime = 0;
+            let highestRiskMachine = { id: "None", riskScore: 0 };
+            let priorityActions = [];
+
+            machines.forEach(m => {
+                totalDowntime += m.recentDowntime;
+                if (m.status === "Operational") totalOperational++;
+
+                let tempRisk = Math.max(0, (m.temp - 60) / (CRITICAL_TEMP - 60));
+                let vibRisk = Math.max(0, (m.vibration - 2) / (CRITICAL_VIB - 2));
+                let riskScore = (tempRisk + vibRisk) / 2;
+
+                if (riskScore > highestRiskMachine.riskScore) {
+                    highestRiskMachine = { id: m.id, riskScore: riskScore };
+                }
+
+                if (unitFilter !== "ALL" && m.unit !== unitFilter) return;
+                if (statusFilter !== "ALL" && m.status !== statusFilter) return;
+
+                const isTempBreached = m.temp > CRITICAL_TEMP;
+                const isVibBreached = m.vibration > CRITICAL_VIB;
+                const alertState = isTempBreached || isVibBreached;
+
+                grid.innerHTML += `
+                    <div class="bg-gray-800 rounded-lg border ${alertState ? 'border-red-500 animate-pulse' : 'border-gray-700'} p-5 shadow-md">
+                        <div class="flex justify-between items-center mb-3">
+                            <span class="font-mono text-lg font-bold text-blue-400">${m.id}</span>
+                            <span class="text-xs px-2 py-1 rounded font-semibold ${m.status === 'Operational' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'}">${m.status}</span>
+                        </div>
+                        <div class="text-xs text-gray-400 space-y-1 mb-4">
+                            <div>Unit Location: <span class="text-gray-200 font-medium">${m.unit}</span></div>
+                            <div>Accumulated Hours: <span class="text-gray-200 font-medium">${m.hours} hrs</span></div>
+                            <div>Scheduled Maintenance: <span class="text-gray-200 font-medium">${m.nextMaintenance}</span></div>
+                            <div>Recent Outage Downtime: <span class="text-gray-200 font-medium">${m.recentDowntime} hrs</span></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 pt-3 border-t border-gray-700 font-mono text-center">
+                            <div class="p-2 rounded bg-gray-900">
+                                <div class="text-[10px] uppercase text-gray-500">Core Temp</div>
+                                <div class="text-sm font-bold ${isTempBreached ? 'text-red-400' : 'text-gray-200'}">${m.temp.toFixed(1)}°C</div>
+                            </div>
+                            <div class="p-2 rounded bg-gray-900">
+                                <div class="text-[10px] uppercase text-gray-500">Vibration</div>
+                                <div class="text-sm font-bold ${isVibBreached ? 'text-red-400' : 'text-gray-200'}">${m.vibration.toFixed(2)} mm/s</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                if (alertState) {
+                    let severity = isTempBreached && isVibBreached ? "CRITICAL" : "WARNING";
